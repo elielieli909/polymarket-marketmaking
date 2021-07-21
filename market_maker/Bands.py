@@ -10,8 +10,7 @@ class Band:
                 max_margin: float,
                 min_amount: float,
                 avg_amount: float,
-                max_amount: float,
-                dust_cutoff: float,):
+                max_amount: float,):
         
         assert(isinstance(min_margin, float))
         assert(isinstance(avg_margin, float))
@@ -19,7 +18,6 @@ class Band:
         assert(isinstance(min_amount, float))
         assert(isinstance(avg_amount, float))
         assert(isinstance(max_amount, float))
-        assert(isinstance(dust_cutoff, float))
 
         self.min_margin = min_margin
         self.avg_margin = avg_margin
@@ -27,7 +25,6 @@ class Band:
         self.min_amount = min_amount
         self.avg_amount = avg_amount
         self.max_amount = max_amount
-        self.dust_cutoff = dust_cutoff
 
         assert(self.min_amount >= 0)
         assert(self.avg_amount >= 0)
@@ -75,8 +72,7 @@ class BuyBand(Band):
                          max_margin=float(dictionary['maxMargin']), 
                          min_amount=float(dictionary['minAmount']), 
                          avg_amount=float(dictionary['avgAmount']), 
-                         max_amount=float(dictionary['maxAmount']), 
-                         dust_cutoff=float(dictionary['dustCutoff']))
+                         max_amount=float(dictionary['maxAmount']))
 
     def includes(self, order: Order, current_price: float) -> bool:
         price_min = current_price * (1 - self.min_margin)
@@ -91,8 +87,7 @@ class SellBand(Band):
                          max_margin=float(dictionary['maxMargin']), 
                          min_amount=float(dictionary['minAmount']), 
                          avg_amount=float(dictionary['avgAmount']), 
-                         max_amount=float(dictionary['maxAmount']), 
-                         dust_cutoff=float(dictionary['dustCutoff']))
+                         max_amount=float(dictionary['maxAmount']))
 
     def includes(self, order: Order, current_price: float) -> bool:
         price_min = current_price * (1 + self.min_margin)
@@ -108,8 +103,8 @@ class Bands:
         try:
             buy_bands = list(map(BuyBand, config['buyBands']))
             sell_bands = list(map(SellBand, config['sellBands']))
-            buy_limits = config['buyLimits']
-            sell_limits = config['sellLimits']
+            buy_limits = config['buyLimits'] if 'buyLimits' in config else []
+            sell_limits = config['sellLimits'] if 'sellLimits' in config else []
         except Exception as e:
             logging.getLogger().exception(f'Invalid config file: ({e}).  Can\'t make any bands.')
             buy_bands = []
@@ -162,8 +157,6 @@ class Bands:
 
         for order in orders:
             if not any(band.includes(order, target_price) for band in bands):
-                self.logger.info(f"Order #{order.order_id} doesn't belong to any band, scheduling it for cancellation")
-
                 yield order
 
 

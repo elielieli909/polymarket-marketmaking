@@ -13,6 +13,7 @@ class Order:
         self.size = size
         self.price = price
         self.is_buy = is_buy
+        self.id = None
 
 
 class PolymarketInterface:
@@ -57,6 +58,7 @@ class PolymarketInterface:
             else:
                 id = self.exchange.limit_sell(order.size, order.price)
 
+            order.id = id
             self.open_orders[id] = order
 
 

@@ -1,5 +1,4 @@
 {
-    "_buyToken": "DAI",
     "buyBands": [
         {
             "minMargin": 0.005,
@@ -7,8 +6,7 @@
             "maxMargin": 0.02,
             "minAmount": 20.0,
             "avgAmount": 30.0,
-            "maxAmount": 40.0,
-            "dustCutoff": 0.0
+            "maxAmount": 40.0
         },
         {
             "minMargin": 0.02,
@@ -16,13 +14,10 @@
             "maxMargin": 0.03,
             "minAmount": 40.0,
             "avgAmount": 60.0,
-            "maxAmount": 80.0,
-            "dustCutoff": 0.0
+            "maxAmount": 80.0
         }
     ],
     "buyLimits": [],
-    
-    "_sellToken": "OUTCOME",
     "sellBands": [
         {
             "minMargin": 0.005,
@@ -30,8 +25,7 @@
             "maxMargin": 0.02,
             "minAmount": 2.5,
             "avgAmount": 5.0,
-            "maxAmount": 7.5,
-            "dustCutoff": 0.0
+            "maxAmount": 7.5
         },
         {
             "minMargin": 0.02,
@@ -39,8 +33,7 @@
             "maxMargin": 0.05,
             "minAmount": 4.0,
             "avgAmount": 6.0,
-            "maxAmount": 8.0,
-            "dustCutoff": 0.0
+            "maxAmount": 8.0
         }
     ],
     "sellLimits": []

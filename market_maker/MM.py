@@ -68,9 +68,9 @@ class MM:
         spread, price = self.market_interface.get_spread()
 
         # Ask the bands what orders we want to cancel given current price and our open orders
-        cancellable_orders = bands.get_cancellable_orders(users_orders, price)
+        cancellable_orders = bands.get_cancellable_orders(users_orders, price) # returns list of Orders
         # Cancel them
-        self.market_interface.cancel_orders(cancellable_orders)
+        self.market_interface.cancel_orders([o.id for o in cancellable_orders]) # takes order_ids
         # Don't place new ones if the orderbook interface is busy (? I guess in case a cancel fails)
         # TODO: Figure this out
 
