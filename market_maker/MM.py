@@ -4,8 +4,9 @@ import json
 import logging
 import time
 
-from market_maker.myBands import Bands
+from market_maker.Bands import Bands
 from market_maker.polymarketInterface import PolymarketInterface, Order
+from market_maker.limits import OrderHistory
 
 class MM:
     def __init__(self, args: list):
@@ -61,8 +62,12 @@ class MM:
 
 
     def synchronize_orders(self):
+        # Get order history TODO: get that
+        orders = []
+        order_hist = OrderHistory()
+        for o in orders: order_hist.add_order({'timestamp': o['timestamp'], 'size': o['size']})
         # Get Bands details
-        bands = Bands.read(self.config_details)
+        bands = Bands.read(self.config_details, order_hist)
         # get Orderbook state and current price
         users_orders = self.market_interface.get_orders() # list of Orders
         spread, price = self.market_interface.get_spread()

@@ -1,5 +1,5 @@
 from configure_bands import SampleBands
-from market_maker.myBands import Bands
+from market_maker.Bands import Bands
 from market_maker.polymarketInterface import Order
 
 def creates_basic_bands():

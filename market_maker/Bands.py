@@ -2,6 +2,7 @@ import logging
 import itertools
 import time
 from market_maker.polymarketInterface import Order
+from market_maker.limits import OrderLimits, OrderHistory
 
 class Band:
     def __init__(self,
@@ -96,7 +97,7 @@ class SellBand(Band):
 
 
 class Bands:
-    def read(config: dict):
+    def read(config: dict, order_history: OrderHistory):
         """Pass a config dict (after being json parsed) to contruct a new Bands object"""
         assert(isinstance(config, dict))
         # Try to get the config
@@ -112,15 +113,15 @@ class Bands:
             buy_limits = []
             sell_limits = []
             
-        return Bands(buy_bands, sell_bands, buy_limits, sell_limits)
+        return Bands(buy_bands, sell_bands, buy_limits, sell_limits, order_history)
 
 
-    def __init__(self, buy_bands: list, sell_bands: list, buy_limits: list, sell_limits: list) -> None:
+    def __init__(self, buy_bands: list, sell_bands: list, buy_limits: list, sell_limits: list, order_history: OrderHistory) -> None:
         # TODO: Implement limits
         self.buy_bands = buy_bands
         self.sell_bands = sell_bands
-        self.buy_limits = buy_limits
-        self.sell_limits = sell_limits
+        self.buy_limits = OrderLimits(buy_limits, order_history)
+        self.sell_limits = OrderLimits(sell_limits, order_history)
 
         if self._bands_overlap(buy_bands) or self._bands_overlap(sell_bands):
             logging.getLogger().warning('Bands in the config file overlap, so we aren\'t using any bands.')
@@ -180,8 +181,7 @@ class Bands:
 
     def _get_new_bids(self, my_bids, current_price, buy_balance):
         bands = self.buy_bands
-        # bid_limit = self.buy_limits.available(time.time())
-        bid_limit = 1000
+        bid_limit = self.buy_limits.get_remaining_size(time.time())
         new_bids = []
 
         for band in bands:
@@ -199,8 +199,7 @@ class Bands:
     
     def _get_new_asks(self, my_asks, current_price, sell_balance):
         bands = self.sell_bands
-        # ask_limit = self.sell_limits.available(time.time())
-        ask_limit = 1000
+        ask_limit = self.sell_limits.get_remaining_size(time.time())
         new_asks = []
 
         for band in bands:
