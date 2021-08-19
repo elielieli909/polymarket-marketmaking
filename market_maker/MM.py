@@ -16,13 +16,10 @@ class MM:
                             help="Configuration file specifying Band details")
 
         parser.add_argument("--market", type=str, required=True,
-                            help="The id (?) of the market you want to make markets on")
+                            help="The FPMM address of the desired market")
 
-        parser.add_argument("--orders-refresh-frequency", type=int, default=3,
-                            help="The number of seconds to wait before querying order and balance details")
-
-        parser.add_argument("--debug", dest='debug', action='store_true',
-                            help="Enable debug output")
+        parser.add_argument("--tokenID", type=str, required=True,
+                            help="The tokenID specifying which conditional token markets will be made for")
 
         self.arguments = parser.parse_args(args)
 
@@ -38,31 +35,22 @@ class MM:
             exit(-1)
 
         # Grab market we want to trade on
-        self.market_interface = PolymarketInterface(self.arguments.market, self.arguments.orders_refresh_frequency)
+        self.market_interface = PolymarketInterface(self.arguments.market, self.arguments.tokenID, self.arguments.orders_refresh_frequency)
         if self.market_interface.get_market() is None:
             logging.getLogger().error('Couldn\'t find a market with id: %s', self.arguments.market)
             exit(-1)
 
-        # Connect to exchange api TODO: need details from Liam
-        # Figure out if we have any open orders already, cancel them I believe TODO: needs API details
-        # Set up price/spread/control(can_buy/sell?) TODO: maybe initiate a ws for price feeds or set up background polling
-        pass
-
 
     def main(self):
-        # wait 10 seconds to let the websockets get set up
         # Every second, synchronize_orders()
         # On shutdown (InterruptHandler?) cancel all orders
         while True:
             # TODO: Probably make this a thread + figure out how to catch Interrupts
             self.synchronize_orders()
             time.sleep(1)
-            self.market_interface.printOB()
-        # print(type(self.config_details['buyBands']))
 
 
     def synchronize_orders(self):
-        # Get order history TODO: get that
         orders = []
         order_hist = OrderHistory()
         for o in orders: order_hist.add_order({'timestamp': o['timestamp'], 'size': o['size']})
@@ -70,7 +58,7 @@ class MM:
         bands = Bands.read(self.config_details, order_hist)
         # get Orderbook state and current price
         users_orders = self.market_interface.get_orders() # list of Orders
-        spread, price = self.market_interface.get_spread()
+        price = self.market_interface.get_price()
 
         # Ask the bands what orders we want to cancel given current price and our open orders
         cancellable_orders = bands.get_cancellable_orders(users_orders, price) # returns list of Orders
@@ -80,7 +68,9 @@ class MM:
         # TODO: Figure this out
 
         # Ask the bands what new orders we want to place, given our open orders, our available balance, and our rate limits (defined in config)
-        orders_to_place = bands.get_new_orders(users_orders, price, 1000, 1000)
+        buy_balance = PolymarketInterface.get_buy_balance()
+        sell_balance = PolymarketInterface.get_sell_balance()
+        orders_to_place = bands.get_new_orders(users_orders, price, buy_balance, sell_balance)
         # Place them
         self.market_interface.place_orders(orders_to_place)
 

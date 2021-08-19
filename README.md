@@ -74,3 +74,12 @@ For each band,
 1. If the sum of order sizes within the band are less than avgAmount, place a new order at avgMargin to either make up the differnece and achieve avgAmount, use your remaining collateral to place the order, or if order limits were specified, use the remaining limit for the specified time frame. 
 
 TODO: explain limits
+
+## Work left to do:
+1. Have the user provide his wallet's private key via a command line argument in MM.py
+2. Somehow use the user's wallet to sign limit orders to the Polymarket relayer contract
+3. Implement a way to get the user's ERC1155 and USDC balance; maintain this as a property of the MM class and pass it to bands.get_new_orders() in synchronize_orders()
+4. Figure out how to cancel on-chain orders, implement this in polymarketInterface.cancel_orders()
+5. Get the user's currently open orders.  Orders that were posted earlier that have since been filled should not be included, or reflect their new size
+5. Testing
+6. All the TODO's; these are mostlly for better performance

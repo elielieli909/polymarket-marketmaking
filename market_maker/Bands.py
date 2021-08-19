@@ -117,7 +117,6 @@ class Bands:
 
 
     def __init__(self, buy_bands: list, sell_bands: list, buy_limits: list, sell_limits: list, order_history: OrderHistory) -> None:
-        # TODO: Implement limits
         self.buy_bands = buy_bands
         self.sell_bands = sell_bands
         self.buy_limits = OrderLimits(buy_limits, order_history)

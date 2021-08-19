@@ -3,7 +3,10 @@ Interfaces with Polymarket's orderbooks.  Analogous to Maker's orderbook_manager
 TODO: Could make this hold it's own state like Maker's in order to rely less on an external get_orders API from polymarket
 """
 
+import logging
 import threading
+import requests
+import utils
 from concurrent.futures import ThreadPoolExecutor
 
 from market_maker.testOrderbook import TestOrderbook
@@ -17,20 +20,19 @@ class Order:
 
 
 class PolymarketInterface:
-    def __init__(self, market_id: str, refresh_frequency: int, max_workers: int = 5) -> None:
+    def __init__(self, fpmm_address: str, asset_id: str, refresh_frequency: int, max_workers: int = 5) -> None:
         """Initializes an interface object with the book corresponding to market_id"""
-        assert(isinstance(market_id, str))
+        assert(isinstance(fpmm_address, str))
+        assert(isinstance(asset_id, str))
         assert(isinstance(refresh_frequency, int))
 
         self.refresh_frequency = refresh_frequency
-        self.market_id = market_id
+        self.asset_id = asset_id
+        self.fpmm_address = fpmm_address
 
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self._lock = threading.Lock()
-        # TODO: Connect to trading API or something
 
-        self.exchange = TestOrderbook()
-        # TODO: this assumes the book will give us orderIDs.  Not sure how this will play IRL
         self.open_orders = {}   # maintain a map of order_id's corresponding to open orders (to cancel later)
 
 
@@ -42,21 +44,16 @@ class PolymarketInterface:
         for id in order_ids:
             # TODO: Use self._executor to cancel an order
             #self._cancel_order(id, self.market_id)
-            self.exchange.cancel(id)
+            pass
 
 
     def place_orders(self, new_orders: list):
         """Takes a list of Order obj's and places them on the corresponding book."""
         assert(isinstance(new_orders, list))
 
-        # TODO: Place via API
         for order in new_orders:
             # TODO: Use self._executor to place an order asynchronously
-            #self._place_order(order, self.market_id)
-            if order.is_buy:
-                id = self.exchange.limit_buy(order.size, order.price)
-            else:
-                id = self.exchange.limit_sell(order.size, order.price)
+            id = self._place_order(order.price, order.size, order.is_buy, self.market_id)
 
             order.id = id
             self.open_orders[id] = order
@@ -66,37 +63,65 @@ class PolymarketInterface:
         """Gets a list of the user's current open orders"""
         # TODO: Ask via API, in the future maybe maintain own list
         # Use self._executor to get orders
-        open_ids = self.exchange.get_open_orders()  # gets order_ids
+        # open_ids = self.exchange.get_open_orders()  # gets order_ids
         orders = []
-        for id in open_ids:
+        for id in []:
             orders.append(self.open_orders[id])
         return orders
 
 
-    def get_spread(self) -> list:
+    def get_price(self) -> float:
         """Gets the best bid and ask and best price from this interface's orderbook"""
-        # TODO: Query the book for all outcomes
-        # TODO: Decide if this should be for only one outcome or not
         # Use self._executor to get spreads
+        res = requests.get(utils.TRACKER_URL + '/midpoint', params={"market": self.fpmm_address, "tokenID": self.asset_id})
 
-        return [.51, .49], .5
+        return res.json()['mid']
 
 
     def get_market(self):
-        """Returns some details about this market.  Will be used to check if this market actually exists"""
+        """Check if this market actually exists"""
         # TODO: query for market details, should return None or something if doesn't exist
         # Use self._executor to query api
 
-        return {"question": "What's .2+.3?"}
+        res = requests.get(utils.TRACKER_URL + '/markets')  # This currently (8/18) returns a list of fpmmaddresses
+        markets = res.json()
+
+        if self.fpmm_address not in markets:
+            return None
+
+        return True
         # return None TODO: this is caught, maybe add as a unit test?
 
-    def printOB(self):
-        """TODO: TEMPORARY, just for testing"""
-        self.exchange.printBAs(4)
-        
+    def _place_order(self, price, size, is_bid, takerAssetID) -> int:
+        """Places an order via relay contract.  Returns the order ID of the newly placed order"""
+        makerAmount = size
+        if is_bid:
+            takerAmount = size / price
+            body = {
+                "maker": "",
+                "makerAssetType": "erc20",
+                "makerAmount": makerAmount,
+                "takerAssetType": "erc1155", 
+                "takerAmount": takerAmount,
+                "takerAssetID": takerAssetID,
+            }
+        else:
+            takerAmount = size * price
+            body = {
+                "maker": "",
+                "makerAssetType": "erc1155",
+                "makerAmount": makerAmount,
+                "takerAssetType": "erc20", 
+                "takerAmount": takerAmount,
+                "takerAssetID": -1,
+            }
 
-    # TODO: use this to fetch the orderbook in the background with self.start()
-    # def _get_account_details_thread(self):
-    #     while True:
-    #         try:
+        # Post the order to the relay contract via the dclob server; TODO: update to whatever method we use to post
+        res = requests.post(utils.ONCHAIN_ORDER_POST_URL, data=body)
+
+        if res.status_code != 200:
+            logging.getLogger().log(logging.WARNING, "Order could not be posted")
+            return -1
+
+        return res.json()['orderId']
 
